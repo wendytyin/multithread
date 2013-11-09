@@ -58,6 +58,7 @@ public abstract class AbstractElevator {
 	public int getCurrFloor(){
 		return currFloor;
 	}
+	//is this necessary?
 	public int getID(){
 		return elevatorId;
 	}

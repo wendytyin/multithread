@@ -6,8 +6,8 @@ import eventbarrier.AbstractEventBarrier;
  */
 public class DoorEventBarrier extends AbstractEventBarrier{
 	private int riders;
-	protected boolean upDir;
 	protected boolean doorOpen;
+	protected boolean upDir;
 	
 	
 	public DoorEventBarrier(){
@@ -62,6 +62,15 @@ public class DoorEventBarrier extends AbstractEventBarrier{
 				e.printStackTrace();
 			}
 		}
+	}
+	public void setDir(boolean up){
+		upDir=up;
+	}
+	/**
+	 * @return true for up, false for down
+	 */
+	public boolean getDir(){
+		return upDir;
 	}
 	
 	@Override

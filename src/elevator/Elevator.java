@@ -1,5 +1,7 @@
 package elevator;
 
+import java.util.Collections;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
 /* Notes to self:
@@ -17,7 +19,7 @@ public class Elevator extends AbstractElevator implements Runnable{
 	private final String elevatorStr;
 	private int riders; //total number of riders in elevator
 	private boolean upDir;
-	private TreeSet<Integer> reqFloors; //or maybe it should be a treemap, so each floor has a enter/exit count
+	private TreeSet<Integer> reqFloors; 
 	protected DoorEventBarrier doorIn;
 	protected DoorEventBarrier doorOut;
 	protected Building myBuilding;
@@ -34,8 +36,6 @@ public class Elevator extends AbstractElevator implements Runnable{
 
 	@Override
 	public void OpenDoors() {
-
-		
 		doorIn=myBuilding.getDoor(this, currFloor,true);
 		doorOut=myBuilding.getDoor(this, currFloor,false);
 
@@ -43,7 +43,8 @@ public class Elevator extends AbstractElevator implements Runnable{
 		printEvent(tmp);
 		
 		doorOut.raise();
-		doorIn.raise();
+		doorIn.setDir(upDir);
+		doorIn.raise(); //automatically close doors upon return
 	}
 
 	@Override
@@ -51,11 +52,6 @@ public class Elevator extends AbstractElevator implements Runnable{
 		String tmp=String.format("on F%d closes\n", currFloor);
 		printEvent(tmp);
 		
-		int nextfloor=getNextFloor();
-		if (nextfloor==-1){
-			//TODO: WAIT AT BUILDING UNTIL A FLOOR REQUESTED
-		}
-		VisitFloor(nextfloor);
 	}
 	
 	/*
@@ -83,8 +79,9 @@ public class Elevator extends AbstractElevator implements Runnable{
 		return i;
 	}
 	
+	//should really only be called within Elevator
 	@Override
-	public void VisitFloor(int floor) {
+	public void VisitFloor(int floor) { 
 		String dir=(upDir)?"up":"down";
 		
 		while (currFloor!=floor){
@@ -94,13 +91,12 @@ public class Elevator extends AbstractElevator implements Runnable{
 			String tmp=String.format("moves %s to F%d\n", dir, currFloor);
 			printEvent(tmp);
 		}
-
 		//currFloor == (desired) floor
 		reqFloors.remove(floor);
 	}
 
 	@Override
-	public boolean Enter() {
+	public synchronized boolean Enter() {
 		if (riders<maxOccupancyThreshold){
 			riders++;
 			return true;
@@ -109,18 +105,25 @@ public class Elevator extends AbstractElevator implements Runnable{
 	}
 
 	@Override
-	public void Exit() {
+	public synchronized void Exit() {
 		riders--;
 	}
 
 	@Override
-	public void RequestFloor(int floor) {
+	public synchronized void RequestFloor(int floor) {
 		reqFloors.add(floor);
 	}
+	//is this necessary?
 	public boolean full() {
 		return (riders==maxOccupancyThreshold);
 	}
-
+	/**
+	 * @return true for up, false for down
+	 */
+	public boolean getDir(){
+		return upDir;
+	}
+	
 	public String toString(){
 		return elevatorStr;
 	}
@@ -136,19 +139,14 @@ public class Elevator extends AbstractElevator implements Runnable{
 	 */
 	@Override
 	public void run() {
-		//while still stuff to do
-		
-		//while reqFloors has nothing
-		//wait on myBuilding (arrive())
-		//endwhile
-		
-		
-		//ClosedDoors() calls 
-		//VisitFloor()
-		//OpenDoors()
-		//ClosedDoors()
-		
-		//endwhile
+		while (true){
+			while (reqFloors.isEmpty()){
+				myBuilding.arrive();
+			}
+			VisitFloor(getNextFloor());
+			OpenDoors();
+			ClosedDoors();
+		}
 		
 	}
 

@@ -56,12 +56,12 @@ public class Rider implements Runnable{
 	
 	protected boolean enterElevator(){
 		elevDoor.arrive();
-		boolean attemptSuc=myElevator.Enter();
-		elevDoor.complete();
-		if (!attemptSuc){
-			getElevator();
+		boolean attemptSuc=false;
+		if (elevDoor.getDir()==(wantedFloor>currFloor)){
+			attemptSuc=myElevator.Enter();
 		}
-		else {
+		elevDoor.complete();
+		if (attemptSuc){
 			String tmp=String.format("enters %s on F%d\n",myElevator.toString(),currFloor);
 			printEvent(tmp);
 		}
@@ -97,7 +97,11 @@ public class Rider implements Runnable{
 			//TODO: WAIT ON INPUT
 			while (currFloor!=wantedFloor){
 				getElevator();
-				enterElevator();
+				boolean suc=enterElevator();
+				while (!suc){
+					getElevator();
+					enterElevator();
+				}
 				rideElevator();
 				exitElevator();
 			}
