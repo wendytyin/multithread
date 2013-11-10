@@ -6,9 +6,9 @@
  * Team Info & Time spent
  *************************/
 
-	Name1: Full Name 	// Edit this accordingly
-	NetId1: fn	 	// Edit
-	Time spent: 10 hours 	// Edit 
+	Name1: Wendy Yin 	
+	NetId1: wty3
+	Time spent: 20 hours
 
 
 /******************
@@ -25,10 +25,11 @@
  * Implementation details
  *************************/
 
-----ELEVATOR RULES----
--Details in README.OUTPUTFORMAT have been implemented. 
 
--No active rider thread is allowed a riderID == 0. 0 is a blank thread that has never been assigned a rider.
+
+----ELEVATOR RULES----
+
+-No active rider thread is allowed a riderID == -1. -1 is a blank thread that has never been assigned a rider.
 -The range of valid riderIDs is otherwise bounded only by the limits of int, 
 but there will be a maximum of [number of riders] active at any single point.
  
@@ -40,29 +41,57 @@ but there will be a maximum of [number of riders] active at any single point.
 -Valid elevator IDs span [0 - (number of elevators-1)].
 
 ----------------------
+------OVERVIEW--------
+The main area of synchronization is the DoorEventBarrier. 
+There is one instance of DoorEventBarrier for every elevator, floor, and directions (in/out of elevator). 
+(ie [number of doors]=[number of elevator threads]*[number of floors]*2)
+
+A Rider thread is in the building and requests an elevator from Building using either CallUp() or CallDown(). 
+The Building holds references to all the Elevators and Doors.
+CallUp/Down selects the elevator it thinks is nearest, gets the appropriate Door, and calls Door.arrive(), which requests its floor to the Elevator and puts the Rider thread to sleep until that Door opens.
+The Door opens and Rider threads wake up when the Elevator thread visits that floor and calls OpenDoors, which calls Door.raise() for both the outwards and inwards Doors on that floor. 
+
+The Elevator always calls OutwardsDoors.raise() before InwardsDoors.raise(), ensuring all exiting Riders exit before entering Riders try to enter. 
+This enforced ordering prevents having to write an algorithm to put as many Riders into the Elevator as possible. 
+If Riders were allowed to enter and exit at the same time, there would need to be something to keep track of how many Riders tried to enter but failed because the Elevator was full, how many Riders exited since then, and notifying the failed entering Riders to try again.
+This is why I chose to have different Doors for in and out of the Elevator, because the effort of writing a tracker was not worth the possible benefits of a slightly faster Elevator or less memory usage.
+
+Once the Rider threads wake up and the Door has been raised, Riders attempt to enter() the Elevator and then call complete() on the Door. 
+Riders that failed to enter() the Elevator (if they are well-behaved, this should only occur if the Elevator is going the wrong way or is full) still call complete() on the Door, but then loop back and request another Elevator from the Building.
+
+Riders that enter() the Elevator ask the Building for the (outwards) Door on the floor they are trying to get to, and arrive() at the door and wait().
 
 
+The problem with the separated in/out door synchronization is that bad riders can screw with this system, and even well-intended riders can have a slightly unexpected trip. 
+If two riders are going in opposite directions on the same floor, if the one rider that enters doesn't immediately request a floor (by getting the new Door and arriving at it), 
+the elevator may get confused and open the doors again, confusing the other rider into entering the elevator. 
+There are also cases where the elevator appears to open and close the doors without letting the waiting rider in. 
+This is related to the nested locks and ordering of print statements.
+The riders will still all be served, though. 
+A rider may arrive() at a Door, triggering a request to that Elevator, get on the Elevator, and then never call the next Door to get off. 
+The Elevator does nothing about this. The Rider can get stuck in the Elevator and ride it all day long. I don't care if it does that. 
+A bad rider may also request a floor directly from the Elevator, instead of using route through Door.arrive(). 
+If the Elevator is already active and travelling, it will visit that floor but not wait inside the eventbarrier (open and close doors quickly) because the bad rider never incremented the "waiting rider" count inside the eventbarrier.
+If the Elevator is idle, it will do nothing because it never gets a signal inside the eventbarrier.
+ 
+---------
+There are also a couple of synchronized methods (Enter() and Exit()) within Elevator, to ensure the elevator keeps an accurate count of rider threads within the elevator. 
 
+Floor and Dir are a data class and enum. They help the Elevator keep track of which floors it needs to visit and on which direction (if the elevator is on floor 1 and going up, it does not need to stop at floor 3 which requested down).
+Floor has immutable characteristics. You can't change an existing Floor, and the increment() and decrement() in Floor (used in determining next floor for the Elevator to visit) returns a new Floor. 
+Deleting and making new Floors is easier than changing existing Floors, because then there's no synchronization to worry about.
 
-/* 
- * This section should contain the implementation details and a overview of the
- * results. 
+----------------------
+--ELEVATOR SELECTION--
+1. The elevator attempts to minimize the direction changes it makes
+2. The building, when selecting the nearest elevator, assumes:
+	a. the elevator will spend the same amount of time on each floor it visits,
+	b. the elevator will travel the full set of floors (1-numFloors)
+	c. an elevator that is currently full will still be full when it reaches the rider's Floor (floor and desired direction).
+Building.calculateDistance() and Building.getNearestElevator() hold the majority of the elevator selecting algorithm.
+The current elevator selector is kind of stupid and does not take into account the number of people on each floor versus the remaining capacity of each elevator. 
+If I had more time, I would modify calculateDistance() inside Building to take these into account.
 
- * You are required to provide a good README document including the
- * implementation details. In particular, you can use pseudocode to describe
- * your implementation details where necessary. However that does not mean to
- * copy/paste your C code. Specifically, explain the synchronization primities
- * used in implmenting the elevator, scheduling choices used, how the capacity
- * constraint is handled, and how the mulitple elevators are supported. Also,
- * explain how to run the test cases for your EventBarrier and Elevator and how
- * to interpret the results. Check the README.OUTPUTFORMAT for the acceptable
- * input/output format for the elevator. Expect the design and implementation
- * details to be at most 2-3 pages.  A plain textfile is encouraged. However, a
- * pdf is acceptable.  No other forms are permitted.
-
- * In case of lab is limited in some functionality, you should provide the
- * details to maximize your partial credit.  
- * */
 
 /************************
  * Feedback on the lab
@@ -80,3 +109,10 @@ but there will be a maximum of [number of riders] active at any single point.
 /*
  * List of collaborators involved including any online references/citations.
  * */
+
+Java tutorial on concurrency:
+ http://docs.oracle.com/javase/tutorial/essential/concurrency/index.html
+UTA hours
+
+I had a problem with nullpointerexception and my treeset, turns out I just didn't understand what null was in Java.
+http://stackoverflow.com/questions/6588856/conversion-from-null-to-int-possible

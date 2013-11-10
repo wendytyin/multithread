@@ -2,14 +2,14 @@ package elevator;
 
 public class Building extends AbstractBuilding {
 
+	private final boolean DEBUG=false;
+	
 	private DoorEventBarrier[][][] doors;
 	private Elevator[] elevators;
-//	private int idleElev;
-//	private boolean quit=false; //only true when we want to quit the program
+	
 	
 	public Building(int numFloors, int numElevators, int maxOccupancy) {
 		super(numFloors, numElevators);
-//		idleElev=0;
 		makeElevatorsAndDoors(numFloors,numElevators,maxOccupancy);
 		runElevators();
 	}
@@ -25,14 +25,9 @@ public class Building extends AbstractBuilding {
 		doors=new DoorEventBarrier[numElevators][numFloors][2];
 		for(int i=0;i<numElevators;i++){
 			elevators[i]=new Elevator(numFloors, i, maxOccupancy, this);
-//			Object elevLock=new Object();
 			for (int j=0;j<numFloors;j++){
 				doors[i][j][0]=new DoorEventBarrier(elevators[i],(j+1));
 				doors[i][j][1]=new DoorEventBarrier(elevators[i],(j+1));
-//				doors[i][j][0]=new DoorEventBarrier(elevLock);
-//				doors[i][j][1]=new DoorEventBarrier(elevLock);
-//				doors[i][j][0]=new DoorEventBarrier();
-//				doors[i][j][1]=new DoorEventBarrier();
 			}
 		}
 	}
@@ -107,14 +102,11 @@ public class Building extends AbstractBuilding {
 			}
 		}
 
-		System.out.println(fromFloor+"called up elev:"+e.toString());
-//		e.RequestFloor(fromFloor); //TODO: PROBLEM CONTEXT SWITCH AFTER THIS, LIVELOCK
+		printDebug("#B: requested:"+e.toString());
+		
 		DoorEventBarrier eDoor=getDoor(e,fromFloor,true);
 		
-//TODO: PROBLEMATIC
-//		wakeUp();
 		eDoor.arrive(Dir.UP);
-		//
 		
 		return e;
 	}
@@ -133,7 +125,7 @@ public class Building extends AbstractBuilding {
 				e=getNearestElev(fromFloor,Dir.DOWN);
 			}
 		}
-		System.out.println("#B:"+fromFloor+" called down:"+e.toString());
+		printDebug("#B:"+fromFloor+" called down:"+e.toString());
 		DoorEventBarrier eDoor=getDoor(e,fromFloor,true);
 		
 		eDoor.arrive(Dir.DOWN);
@@ -145,34 +137,11 @@ public class Building extends AbstractBuilding {
 		int i=in?0:1;
 		return doors[e.getID()][floor-1][i];
 	}
-//	
-//	/**
-//	 * Called by elevators when no longer idle
-//	 */
-//	public synchronized void complete(){
-//		idleElev--;
-//	}
-//	
-//	protected synchronized void wakeUp(){
-//		System.out.println("wakeup!");
-//		notifyAll();
-//	}
-//	
-//	/**
-//	 * Returns when all elevator threads have finished running and gone idle
-//	 */
-//	public synchronized void quit(){
-//		quit=true;
-//		notifyAll();
-//		while (idleElev!=numElevators){
-//			try {
-//				wait(); 
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			} 
-//		}
-//		System.out.flush();
-//		System.exit(1); //TODO?
-//	}
+	
+	private void printDebug(String s){
+		if (DEBUG){
+		System.out.println(s);
+		}
+	}
+	
 }

@@ -39,6 +39,12 @@ public class Floortest {
 		fl=f.ts.ceiling(fl);
 
 		System.out.println(fl.floor+","+fl.dir);
+		fl=fl.increment();
+
+		System.out.println(fl.floor+","+fl.dir);
+		fl=f.ts.ceiling(fl);
+
+		System.out.println(fl.floor+","+fl.dir);
 		
 	}
 }

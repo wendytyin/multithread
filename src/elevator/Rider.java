@@ -3,16 +3,18 @@ package elevator;
 
 public class Rider implements Runnable{
 	
+	private final boolean DEBUG=false;
+
 	private final String riderStr;
 	private int currFloor;
 	private int wantedFloor;
 	protected int riderId;
-	
+
 	protected Building myBuilding;
 	protected Elevator myElevator;
 	protected DoorEventBarrier elevDoor;
-	
-	
+
+
 	public Rider (int id, int currFloor, int wantedFloor, AbstractBuilding bldg){
 		this.riderId=id;
 		this.currFloor=currFloor;
@@ -20,7 +22,7 @@ public class Rider implements Runnable{
 		myBuilding=(Building) bldg;
 		riderStr="R"+id+" ";
 	}
-	
+
 	/**
 	 * Changes rider thread properties to 
 	 * @param id
@@ -38,28 +40,26 @@ public class Rider implements Runnable{
 		//rider thread still needs to travel
 		return false;
 	}
-	
+
 	protected void getElevator(){
 		String tmp=(wantedFloor>currFloor)?"U":"D";
 		tmp=String.format("pushes %s%d\n",tmp,currFloor);
 		printEvent(tmp);
 		if (wantedFloor>currFloor){
 			myElevator=(Elevator) myBuilding.CallUp(currFloor);
-//			tmp="U";
+			//			tmp="U";
 		}
 		else {
 			myElevator=(Elevator) myBuilding.CallDown(currFloor);
-//			tmp="D";
+			//			tmp="D";
 		}
-//		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
-//		elevDoor.arrive();
 	}
-	
+
 	protected boolean enterElevator(){
 		if (myElevator==null){return false;}
 		boolean attemptSuc=false;
 		Dir d=myElevator.getDir();
-		System.out.println("#R: dir"+d);
+		printDebug("#R: dir"+d);
 		if (d==Dir.X){
 			attemptSuc=myElevator.Enter();
 		}
@@ -75,7 +75,6 @@ public class Rider implements Runnable{
 		}
 		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
 		elevDoor.complete();
-		System.out.println("#R: suc0:"+attemptSuc);
 		return attemptSuc;
 	}
 	protected void rideElevator(){
@@ -84,7 +83,7 @@ public class Rider implements Runnable{
 		elevDoor=myBuilding.getDoor(myElevator, wantedFloor, false);
 		elevDoor.arrive();
 	}
-	
+
 	protected void exitElevator(){
 		currFloor=myElevator.getCurrFloor();
 		myElevator.Exit();
@@ -97,32 +96,38 @@ public class Rider implements Runnable{
 	public String toString(){
 		return riderStr;
 	}
+	private void printDebug(String s){
+		if (DEBUG){
+		System.out.println(s);
+		}
+	}
 	protected void printEvent(String s){
 		//TODO SEND TO EVENTBARRIER
-		System.out.println(riderStr+s);
+		System.out.print(riderStr+s);
 	}
 
 
 	@Override
 	public void run() {
 		while (riderId!=-1){
-			//TODO: WAIT ON INPUT
+			//TODO: WAIT ON INPUT elevator.input
 			while (currFloor!=wantedFloor){
 				getElevator();
 				boolean suc=enterElevator();
-				System.out.println("#R: suc"+suc);
-				
+				printDebug("#R: suc"+suc);
+
 				while (!suc){ //bit of a spin lock if failed enter
 
-					System.out.println("#R: "+myElevator+" full");
+					printDebug("#R: "+myElevator+" full");
 					getElevator();
 					suc=enterElevator();
+					printDebug("#R: suc"+suc);
 				}
 				rideElevator();
 				exitElevator();
 			}
-			riderId=-1; //TODO: FOR TESTING REMOVE
+			riderId=-1; //TODO: FOR TESTING, REMOVE WHEN IMPLEMENT ELEVATOR.INPUT
 		}
 	}
-	
+
 }
