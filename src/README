@@ -8,9 +8,9 @@
 
 	Name1: Wendy Yin 	
 	NetId1: wty3
-	Time spent: 20 hours
+	Time spent: 25 hours
 
-
+Eclipse 3.7.2; Java 7.45 64bit
 /******************
  * Files to submit
  ******************/
@@ -25,19 +25,47 @@
  * Implementation details
  *************************/
 
+------TESTING-------
+I did not implement elevator.input or elevator.log. All events are printed to System.out through a method 
+called "printEvent(String s)" present in the Elevator and Rider classes. 
+The printed events conform to the format given in README.OUTPUTFORMAT.
+The program also does not stop running by itself. I have the beginnings of an implementation with quit() and various boolean flags, but it is not completed.
+There is also the option to print most of the comments I used to help debug, which can be turned on by 
+setting DEBUG to true in Building, Elevator, Rider, and DoorEventBarrier.
 
+There are hard-coded test cases available through command line:
+
+p1 = eventbarrier. See details below.
+p2part1 = first part elevator (1 elevator, unlimited space)
+p2part2 = second part elevator (1 elevator, limited space)
+p2part3 = third part elevator (multiple elevators, limited space) - can see some of the known bugs (see section below) in this test case.
+userinput = - DO NOT USE NOT FULLY IMPLEMENTED - the beginnings of the input/output redirection, currently reads in System.in but I don't know if it works the way it should. 
+----------------------
+
+Event Barrier:
+A consumer prints "arrive", arrives at the barrier (synchronized method), prints the number of consumers waiting on the barrier, and waits. 
+A producer thread comes, sets an event in the barrier (saving a test string "testing eventbarrier"), then raises the barrier (another synchronized method). 
+Raise wakes up the consumers in arrive, and makes the producer wait until there are no more consumers left to respond to the event.
+The awakened Consumers get the event and print it, then call complete() on the barrier (synchronized). 
+Complete decrements the count of waiters, puts Consumers to sleep (so they can't call arrive again and form an infinite loop where Producer is blocked forever), and when the count goes to zero, wakes everyone back up.
+
+Consumer and Producer threads wait on the same Object, so notifyAll() in the event barrier wakes both types of threads up.
+Consumer then prints "I'm finished" and stops running, and Producer prints "I'm out" and stops running.
+
+The test given does not guarantee a certain schedule. There may be one or two Consumers that arrive after the Producer returned from raise, so they missed the signal and wait forever.
 
 ----ELEVATOR RULES----
 
--No active rider thread is allowed a riderID == -1. -1 is a blank thread that has never been assigned a rider.
+-No active rider thread is allowed a riderID == -1 or 0. These are reserved for special cases
 -The range of valid riderIDs is otherwise bounded only by the limits of int, 
 but there will be a maximum of [number of riders] active at any single point.
  
 -Each riderID is unique. No single riderID can be in two places at once, though it may be handled by any free rider thread.
+There is technically nothing in the code that enforces this, though. It is up to the Dispatcher (or whatever other thing is used to modify and control the Rider thread pool) to enforce this.
 
 -No negative floor numbers. The floor numbers span [1 - number of floors].
 
--Each elevator is bound to a single elevatorID.
+-Each elevator thread is bound to a single elevatorID.
 -Valid elevator IDs span [0 - (number of elevators-1)].
 
 ----------------------
@@ -49,7 +77,35 @@ There is one instance of DoorEventBarrier for every elevator, floor, and directi
 A Rider thread is in the building and requests an elevator from Building using either CallUp() or CallDown(). 
 The Building holds references to all the Elevators and Doors.
 CallUp/Down selects the elevator it thinks is nearest, gets the appropriate Door, and calls Door.arrive(), which requests its floor to the Elevator and puts the Rider thread to sleep until that Door opens.
+
+If the Elevator was idle during this time, meaning it had no floors to visit, it requested a Door from the Building (belonging to itself) and waited on that Door's reference to itself.
+That is, the Elevator called a method that looks like this:
+
+Elevator myElevator;
+
+myDoor.arriveElev(){
+	synchronized (myElevator){
+		while (no floors to visit)
+		wait()
+	}
+}
+This works because all Doors corresponding with a specific Elevator hold a reference to that single Elevator object. 
+The Elevator does not need to wait() at a specific floor and Door in order to be woken up by an incoming Rider. As long as the Rider arrive()s at a Door belonging to the right set, it can access the object and wake up the idle Elevator.
+Is this safe? It doesn't seem that safe, as objects outside of Door have access to that same Elevator it references, and could change it somehow so the synchronization can't find the Elevator object and the method fails. 
+But I'm having trouble thinking of better alternatives at this point.
+
+To wake up an idle Elevator, when the Rider thread .arrive(s) at the Door, it notifies the elevator. 
+It is a nested lock, and it makes the code hard to follow, but I figure the chances of problems from this are low as long as myElevator never calls anything it could block/deadlock on within the arriveElev method.
+synchronized void arrive(){ //for Rider threads
+	riders++;
+	synchronized(myElevator){ myElevator.requestFloor(this.floor); notifyAll(); //wake up idle elevator }
+	while (door closed)
+		wait
+	}
+
 The Door opens and Rider threads wake up when the Elevator thread visits that floor and calls OpenDoors, which calls Door.raise() for both the outwards and inwards Doors on that floor. 
+Once an Elevator has visited a floor, it deletes that floor from its list of floors to visit. 
+Any Riders that failed to get on while the Elevator was on that floor press the button again (Building.callUp/Down).
 
 The Elevator always calls OutwardsDoors.raise() before InwardsDoors.raise(), ensuring all exiting Riders exit before entering Riders try to enter. 
 This enforced ordering prevents having to write an algorithm to put as many Riders into the Elevator as possible. 
@@ -59,28 +115,34 @@ This is why I chose to have different Doors for in and out of the Elevator, beca
 Once the Rider threads wake up and the Door has been raised, Riders attempt to enter() the Elevator and then call complete() on the Door. 
 Riders that failed to enter() the Elevator (if they are well-behaved, this should only occur if the Elevator is going the wrong way or is full) still call complete() on the Door, but then loop back and request another Elevator from the Building.
 
-Riders that enter() the Elevator ask the Building for the (outwards) Door on the floor they are trying to get to, and arrive() at the door and wait().
+Riders that enter() the Elevator ask the Building for the (outwards) Door on the floor they are trying to get to, and arrive() at the door and wait(). The process repeats - the Elevator visits the next floor, gets the Doors for that floor, calls raise() on them.
 
 
-The problem with the separated in/out door synchronization is that bad riders can screw with this system, and even well-intended riders can have a slightly unexpected trip. 
-If two riders are going in opposite directions on the same floor, if the one rider that enters doesn't immediately request a floor (by getting the new Door and arriving at it), 
-the elevator may get confused and open the doors again, confusing the other rider into entering the elevator. 
-There are also cases where the elevator appears to open and close the doors without letting the waiting rider in. 
-This is related to the nested locks and ordering of print statements.
-The riders will still all be served, though. 
-A rider may arrive() at a Door, triggering a request to that Elevator, get on the Elevator, and then never call the next Door to get off. 
-The Elevator does nothing about this. The Rider can get stuck in the Elevator and ride it all day long. I don't care if it does that. 
-A bad rider may also request a floor directly from the Elevator, instead of using route through Door.arrive(). 
-If the Elevator is already active and travelling, it will visit that floor but not wait inside the eventbarrier (open and close doors quickly) because the bad rider never incremented the "waiting rider" count inside the eventbarrier.
-If the Elevator is idle, it will do nothing because it never gets a signal inside the eventbarrier.
- 
----------
 There are also a couple of synchronized methods (Enter() and Exit()) within Elevator, to ensure the elevator keeps an accurate count of rider threads within the elevator. 
 
 Floor and Dir are a data class and enum. They help the Elevator keep track of which floors it needs to visit and on which direction (if the elevator is on floor 1 and going up, it does not need to stop at floor 3 which requested down).
 Floor has immutable characteristics. You can't change an existing Floor, and the increment() and decrement() in Floor (used in determining next floor for the Elevator to visit) returns a new Floor. 
-Deleting and making new Floors is easier than changing existing Floors, because then there's no synchronization to worry about.
+Deleting and making new Floors is easier than changing existing Floors, because there's no synchronization to worry about.
 
+----------------------
+-KNOWN BUGS AND ISSUES-
+
+The problem with the separated in/out door synchronization is that bad riders can screw with this system, and even well-intended riders can have a slightly unexpected trip. 
+
+If two riders are going in opposite directions on the same floor, if the one rider that enters doesn't immediately request a floor (by getting the new Door and arriving at it), 
+the elevator may get confused and open the doors again, confusing the other rider into entering the elevator. 
+There are also cases where the elevator appears to open and close the doors without letting the waiting rider in, after the rider has already printed that they pushed the button up/down.
+This is related to the nested locks and ordering of print statements (which are not inside synchronized methods). The rider thread may not have actually completed the elevator.requestFloor by the time the Elevator decides to move/open/close, despite what the Rider printed. 
+The riders will still all be served, though. 
+
+A rider may arrive() at a Door, triggering a request to that Elevator, get on the Elevator, and then never call the next Door to get off. 
+The Elevator does nothing about this. The Rider can get stuck in the Elevator and ride it all day long. I don't care if it does that. 
+
+A bad rider may also request a floor directly from the Elevator, instead of using route through Door.arrive(). 
+If the Elevator is already active and travelling, it will visit that floor but not wait inside the eventbarrier (open and close doors quickly) because the bad rider never incremented the "waiting rider" count inside the eventbarrier.
+If the Elevator is idle, it will do nothing because it never gets a signal inside the eventbarrier.
+ 
+Lastly, the building is not the smartest (but it is fairly reasonable and plausible). See next section.
 ----------------------
 --ELEVATOR SELECTION--
 1. The elevator attempts to minimize the direction changes it makes
@@ -89,9 +151,10 @@ Deleting and making new Floors is easier than changing existing Floors, because 
 	b. the elevator will travel the full set of floors (1-numFloors)
 	c. an elevator that is currently full will still be full when it reaches the rider's Floor (floor and desired direction).
 Building.calculateDistance() and Building.getNearestElevator() hold the majority of the elevator selecting algorithm.
-The current elevator selector is kind of stupid and does not take into account the number of people on each floor versus the remaining capacity of each elevator. 
-If I had more time, I would modify calculateDistance() inside Building to take these into account.
 
+The current elevator selector is kind of stupid and does not take into account the number of people on each floor versus the remaining capacity of each elevator. The Rider must first observe that the Elevator is full (by getting a false returned from Enter) and then requesting another Elevator. 
+If I had more time, I would modify calculateDistance() inside Building to take these into account.
+----------------------
 
 /************************
  * Feedback on the lab
@@ -101,6 +164,13 @@ If I had more time, I would modify calculateDistance() inside Building to take t
  * Any comments/questions/suggestions/experiences that you would help us to
  * improve the lab.
  * */
+
+It's been so long since I did any Java, I had trouble wrapping my head around the mixing of stack variables and Threads 
+with Objects and inheritance and private variables. I know threads are orthogonal, and I've written code, but it's still trippy.
+Could easily spend a larger portion of this semester on concurrency, and I wish we had.
+
+Also, I kind of miss C, just a little bit. 
+These Java references that are sometimes immutable and sometimes mutable/pointers...it's a bit like magic and a lot of memorizing the rules. 
 
 /************************
  * References
@@ -112,6 +182,7 @@ If I had more time, I would modify calculateDistance() inside Building to take t
 
 Java tutorial on concurrency:
  http://docs.oracle.com/javase/tutorial/essential/concurrency/index.html
+ 
 UTA hours
 
 I had a problem with nullpointerexception and my treeset, turns out I just didn't understand what null was in Java.

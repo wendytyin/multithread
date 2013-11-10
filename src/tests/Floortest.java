@@ -6,6 +6,9 @@ import java.util.TreeSet;
 import elevator.Dir;
 import elevator.Floor;
 
+/*
+ * Just to test my increment and decrement functions in Floor
+ */
 public class Floortest {
 
 	public TreeSet<Floor> ts=new TreeSet<Floor>();

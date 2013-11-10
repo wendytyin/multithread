@@ -34,7 +34,10 @@ public abstract class AbstractBuilding {
      * @param fromFloor  floor from which elevator is called
      * @return           instance of the elevator to use to go down
      */
-	public abstract AbstractElevator CallDown(int fromFloor); 
+	public abstract AbstractElevator CallDown(int fromFloor);
+
     
 	/* Other methods as needed goes here */
+
+	public abstract void quit();
 }

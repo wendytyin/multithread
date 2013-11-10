@@ -43,7 +43,7 @@ public class Elevatortest {
 	//Building with 4 floors, 2 elevators, elevator capacity of 2
 	public void run3(){
 		Building bldg=new Building(4, 2, 2);
-		Rider r0=new Rider(0, 4, 2, bldg);
+		Rider r0=new Rider(5, 4, 2, bldg);
 		Thread rr0=new Thread(r0);
 		rr0.start();
 		Rider r1=new Rider(1, 4, 2, bldg);

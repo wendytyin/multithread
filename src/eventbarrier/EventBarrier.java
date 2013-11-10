@@ -15,7 +15,7 @@ public class EventBarrier extends AbstractEventBarrier{
 	@Override
 	public synchronized void arrive() {
 		waiters++;
-		System.out.println(waiters);
+		System.out.println("arrived: "+waiters);
 		while (!signalled){
 			try {
 				wait();
@@ -33,7 +33,7 @@ public class EventBarrier extends AbstractEventBarrier{
 	 * TODO: change that assumption
 	 */
 	public void setEvent(String e){
-		System.out.println("set: "+e);
+		System.out.println("set fake event: "+e);
 		fakeevent=e;
 	}
 	public String getEvent(){
@@ -67,15 +67,17 @@ public class EventBarrier extends AbstractEventBarrier{
 	public synchronized void complete() {
 		waiters--;
 
-//		System.out.println(waiters);
+		System.out.println(waiters);
 		if (waiters<=0){
 			notifyAll(); //wake up producer to finish raise()
 		}
+		while (waiters>0){
 		try {
 			wait(); //put finished consumers back to sleep while event in progress
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
 		}
 	}
 

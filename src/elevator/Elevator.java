@@ -1,6 +1,7 @@
 package elevator;
 
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /* Notes to self:
  * Elevator cannot and must not close doors until all exiting riders have exited and as many entering as possible have entered
@@ -20,7 +21,8 @@ public class Elevator extends AbstractElevator implements Runnable{
 	private int currFloor; 
 	private int riders; //total number of riders in elevator
 	private Dir currDir;
-	protected TreeSet<Floor> reqFloors; 
+//	protected TreeSet<Floor> reqFloors; 
+	protected ConcurrentSkipListSet<Floor> reqFloors;
 	protected DoorEventBarrier doorIn;
 	protected DoorEventBarrier doorOut;
 	protected Building myBuilding;
@@ -32,7 +34,8 @@ public class Elevator extends AbstractElevator implements Runnable{
 		riders=0;
 		currFloor=1;
 		currDir=Dir.X;
-		reqFloors=new TreeSet<Floor>();
+//		reqFloors=new TreeSet<Floor>();
+		reqFloors=new ConcurrentSkipListSet<Floor>();
 		elevatorStr="E"+elevatorId;
 	}
 
@@ -102,6 +105,8 @@ public class Elevator extends AbstractElevator implements Runnable{
 		assert(floor>0 && floor<=numFloors);
 		if (floor<currFloor){ this.currDir=Dir.DOWN;}
 		else { this.currDir=Dir.UP;}
+
+		synchronized(this){
 		String d=(currDir==Dir.UP)?"up":"down";
 			while (currFloor!=floor){
 				if (currDir==Dir.UP) currFloor++;
@@ -111,7 +116,6 @@ public class Elevator extends AbstractElevator implements Runnable{
 				printEvent(tmp);
 			}
 			
-			synchronized(this){
 			//currFloor == (desired) floor
 			printDebug("#E: removing "+f.floor+f.dir);
 //			reqFloors.remove(f); //entering riders in this direction taken care of
@@ -166,7 +170,7 @@ public class Elevator extends AbstractElevator implements Runnable{
 		printDebug("#E: floors visit: "+floor+d);
 	}
 
-	public synchronized boolean hasFloors(){
+	public synchronized boolean hasNoFloors(){
 		return reqFloors.isEmpty();
 	}
 
@@ -198,6 +202,10 @@ public class Elevator extends AbstractElevator implements Runnable{
 		System.out.println(s);
 		}
 	}
+	
+	public void quit(){
+		myBuilding=null;
+	}
 
 
 	/*
@@ -205,8 +213,8 @@ public class Elevator extends AbstractElevator implements Runnable{
 	 */
 	@Override
 	public void run() {
-		doorIn=myBuilding.getDoor(this, currFloor, true);
-		while (true){
+		while (myBuilding!=null){
+			doorIn=myBuilding.getDoor(this, currFloor, true);
 			doorIn.arriveElev();
 			printDebug("#E:go"+toString());
 			VisitFloor(getNextFloor());

@@ -5,6 +5,8 @@ public class Rider implements Runnable{
 	
 	private final boolean DEBUG=false;
 
+	private static Dispatcher dispatch=null;
+	
 	private final String riderStr;
 	private int currFloor;
 	private int wantedFloor;
@@ -22,6 +24,10 @@ public class Rider implements Runnable{
 		myBuilding=(Building) bldg;
 		riderStr="R"+id+" ";
 	}
+	
+	public void setDispatcher(Dispatcher d){
+		dispatch=d;
+	}
 
 	/**
 	 * Changes rider thread properties to 
@@ -30,7 +36,7 @@ public class Rider implements Runnable{
 	 * @param wantedFloor
 	 * @return true if thread successfully changed, false if thread reject the change
 	 */
-	public boolean resetRider(int id, int currFloor, int wantedFloor){
+	private boolean resetRider(int id, int currFloor, int wantedFloor){
 		if (currFloor==wantedFloor){
 			this.riderId=id;
 			this.currFloor=currFloor;
@@ -110,7 +116,15 @@ public class Rider implements Runnable{
 	@Override
 	public void run() {
 		while (riderId!=-1){
-			//TODO: WAIT ON INPUT elevator.input
+			if (dispatch!=null){ //for non-hard coding of riders
+				try {
+					Integer[] prop=dispatch.getRider(riderId);
+					resetRider(prop[0],prop[1],prop[2]);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			while (currFloor!=wantedFloor){
 				getElevator();
 				boolean suc=enterElevator();
@@ -126,7 +140,6 @@ public class Rider implements Runnable{
 				rideElevator();
 				exitElevator();
 			}
-			riderId=-1; //TODO: FOR TESTING, REMOVE WHEN IMPLEMENT ELEVATOR.INPUT
 		}
 	}
 

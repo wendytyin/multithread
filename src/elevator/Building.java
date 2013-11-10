@@ -138,6 +138,11 @@ public class Building extends AbstractBuilding {
 		return doors[e.getID()][floor-1][i];
 	}
 	
+	public void quit(){
+		System.exit(0);
+	}
+	
+	
 	private void printDebug(String s){
 		if (DEBUG){
 		System.out.println(s);

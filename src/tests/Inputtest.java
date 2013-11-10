@@ -4,6 +4,13 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
+
+/**
+ * For elevator.input
+ * UNFINISHED PLEASE IGNORE
+ * @author Wendy
+ *
+ */
 public class Inputtest {
 	
 	private void readFile(String filename) throws IOException {

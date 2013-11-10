@@ -48,7 +48,7 @@ public class DoorEventBarrier extends AbstractEventBarrier{
 	 */
 	public void arriveElev(){
 		synchronized(myElevator){
-			while (myElevator.hasFloors()){
+			while (myElevator.hasNoFloors()){
 				printDebug("#D: elev wait");
 				try {
 					myElevator.wait();
