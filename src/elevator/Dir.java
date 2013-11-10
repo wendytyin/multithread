@@ -1,5 +1,5 @@
 package elevator;
 
 public enum Dir {
-	UP, DOWN, X
+	DOWN, X, UP
 }

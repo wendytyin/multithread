@@ -31,7 +31,7 @@ public abstract class AbstractElevator {
 	public abstract void ClosedDoors();
 
 	/* Go to a requested floor */
-	public abstract void VisitFloor(int floor);
+	protected abstract void VisitFloor(Floor f); //MODIFIED ARG
 
 
 	/**

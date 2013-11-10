@@ -56,6 +56,7 @@ public class Rider implements Runnable{
 	}
 	
 	protected boolean enterElevator(){
+		if (myElevator==null){return false;}
 		boolean attemptSuc=false;
 		Dir d=myElevator.getDir();
 		System.out.println("#R: dir"+d);
@@ -74,6 +75,7 @@ public class Rider implements Runnable{
 		}
 		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
 		elevDoor.complete();
+		System.out.println("#R: suc0:"+attemptSuc);
 		return attemptSuc;
 	}
 	protected void rideElevator(){
@@ -87,7 +89,7 @@ public class Rider implements Runnable{
 		currFloor=myElevator.getCurrFloor();
 		myElevator.Exit();
 		String tmp=String.format("exits %s on F%d\n",myElevator.toString(),myElevator.getCurrFloor());
-		printEvent(tmp); //TODO: THIS NEEDS TO BE ENSURED BEFORE E CLOSES DOORS
+		printEvent(tmp);
 		elevDoor.complete();
 	}
 
@@ -110,10 +112,11 @@ public class Rider implements Runnable{
 				boolean suc=enterElevator();
 				System.out.println("#R: suc"+suc);
 				
-				while (!suc){
+				while (!suc){ //bit of a spin lock if failed enter
+
+					System.out.println("#R: "+myElevator+" full");
 					getElevator();
-					enterElevator();
-					System.out.println("#R: suc"+suc);
+					suc=enterElevator();
 				}
 				rideElevator();
 				exitElevator();

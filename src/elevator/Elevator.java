@@ -18,7 +18,7 @@ public class Elevator extends AbstractElevator implements Runnable{
 	private int currFloor; 
 	private int riders; //total number of riders in elevator
 	private Dir dir;
-	protected TreeSet<Integer> reqFloors; 
+	protected TreeSet<Floor> reqFloors; 
 	protected DoorEventBarrier doorIn;
 	protected DoorEventBarrier doorOut;
 	protected Building myBuilding;
@@ -30,18 +30,11 @@ public class Elevator extends AbstractElevator implements Runnable{
 		riders=0;
 		currFloor=1;
 		dir=Dir.X;
-		reqFloors=new TreeSet<Integer>();
+		reqFloors=new TreeSet<Floor>();
 		elevatorStr="E"+elevatorId;
 	}
 
 
-	/*
-	 * May be useful in building nearest elevator algorithm?
-	 */
-	public int getCurrFloor(){
-		return currFloor;
-	}
-	
 	@Override
 	public void OpenDoors() {
 		doorIn=myBuilding.getDoor(this, currFloor,true);
@@ -66,38 +59,54 @@ public class Elevator extends AbstractElevator implements Runnable{
 	/*
 	 * Elevator attempts to minimize number of direction changes
 	 */
-	private int getNextFloor(){
+	private Floor getNextFloor(){
+//		System.out.println("#E: gNF called");
 		if (reqFloors.isEmpty()){
-			return -1;
+			System.out.println("#E: empty");
+			dir=Dir.X;
+			return null;
 		}
-		Integer i=-1;
+		Floor i=new Floor(currFloor,dir);
 //		System.out.println("#E: currfloor:"+currFloor);
 		if((dir==Dir.UP) || (dir==Dir.X)){
 //			System.out.println("#E: currfloor:"+currFloor+reqFloors.size());
-			i=reqFloors.ceiling(currFloor);
 			dir=Dir.UP;
+			i=i.increment();
+			i=reqFloors.ceiling(i);
+			while ((i!=null)&&(i.dir==Dir.DOWN)){
+				System.out.println("#Ei2: "+i.floor+i.dir);
+				i=i.increment();
+				System.out.println("#Ei2: "+i.floor+i.dir);
+				i=reqFloors.ceiling(i);
+			}
 			if (i==null){
-				dir=Dir.DOWN;
-				return getNextFloor();
+				i=reqFloors.last();
 			}
 		} 
 		else {
-//			System.out.println("#E: "+reqFloors.first());
-//			System.out.println("#E: size:"+reqFloors.size());
-			i=reqFloors.floor(currFloor);
+			i=i.decrement();
+			i=reqFloors.floor(i);
+			while ((i!=null)&&(i.dir==Dir.UP)){
+				System.out.println("#Ee2: "+i.floor+i.dir);
+				i=i.decrement();
+				i=reqFloors.floor(i);
+			}
 			if (i==null){
-//				System.out.println("#E: switch dir");
-				dir=Dir.UP;
-				return getNextFloor();
+				i=reqFloors.first();
 			}
 		}
+		System.out.println("#E: nF"+i.floor+i.dir);
 		return i;
 	}
 	
 	//should really only be called within Elevator
 	@Override
-	public synchronized void VisitFloor(int floor) { 
+	protected synchronized void VisitFloor(Floor f) { 
+		assert(f!=null);
+		int floor=f.floor;
 		assert(floor>0 && floor<=numFloors);
+		if (floor<currFloor){ dir=Dir.DOWN;}
+		else { dir=Dir.UP;}
 		String d=(dir==Dir.UP)?"up":"down";
 		while (currFloor!=floor){
 			if (dir==Dir.UP) currFloor++;
@@ -107,9 +116,9 @@ public class Elevator extends AbstractElevator implements Runnable{
 			printEvent(tmp);
 		}
 		//currFloor == (desired) floor
-		reqFloors.remove(floor);
+		reqFloors.remove(f);
 		
-		if (getNextFloor()==-1){
+		if (!hasFloors()){
 			dir=Dir.X;
 		}
 		if (currFloor==1){
@@ -139,17 +148,36 @@ public class Elevator extends AbstractElevator implements Runnable{
 	 * Must be accessed through DoorEventBarrier (synchronization issues)
 	 */
 	@Override
-	public synchronized void RequestFloor(int floor) {
+	public void RequestFloor(int floor) {
 		assert(floor>0 && floor<=numFloors);
-		reqFloors.add(floor);
+		reqFloors.add(new Floor(floor,Dir.X));
 //		System.out.println("#E: floors visit: "+reqFloors.first());
 	}
 
-	/**
-	 * @return true for up, false for down
+	public void RequestFloor(int floor,Dir d) {
+		assert(floor>0 && floor<=numFloors);
+		reqFloors.add(new Floor(floor,d));
+		System.out.println("#E: floors visit: "+floor+d);
+	}
+	
+
+
+	public boolean hasFloors(){
+		return reqFloors.isEmpty();
+	}
+
+	/*
+	 * For Building elevator selecting algorithm
 	 */
+	public int getCurrFloor(){
+		return currFloor;
+	}
+	
 	public Dir getDir(){
 		return dir;
+	}
+	public boolean isFull(){
+		return (riders>=maxOccupancyThreshold);
 	}
 	
 	public String toString(){
@@ -167,17 +195,10 @@ public class Elevator extends AbstractElevator implements Runnable{
 	 */
 	@Override
 	public void run() {
+		doorIn=myBuilding.getDoor(this, currFloor, true);
 		while (true){
 //			System.out.println("#E: start");
-			while (getNextFloor()==-1){
-				doorIn=myBuilding.getDoor(this, currFloor, true);
-//				DoorEventBarrier d=myBuilding.getDoor(this, currFloor, true);
-				System.out.println("wait"+toString());
-//				myBuilding.arrive();
-				dir=Dir.X;
-				doorIn.arriveElev();
-			}
-//			myBuilding.complete();
+			doorIn.arriveElev();
 			System.out.println("#E:go"+toString());
 			VisitFloor(getNextFloor());
 			OpenDoors();

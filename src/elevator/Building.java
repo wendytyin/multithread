@@ -44,9 +44,13 @@ public class Building extends AbstractBuilding {
 	 * 
 	 * May edit this algorithm later to be smarter (take into account different times on each floor)
 	 */
-	private int calculateDistance(int rFloor, int eFloor, Dir rdir, Dir edir){
+	private int calculateDistance(int rFloor, Dir rdir, Elevator e){
 		int dist=0;
+		if (e.isFull()){return (2*numFloors);}
+		int eFloor=e.getCurrFloor();
+		Dir edir=e.getDir();
 		if ((rFloor==eFloor) && (rdir==edir)){return dist;}
+		
 		if (edir==Dir.UP){
 			if (rdir==Dir.DOWN){ dist=(numFloors-eFloor)+(numFloors-rFloor);}
 			else {
@@ -68,13 +72,12 @@ public class Building extends AbstractBuilding {
 		return dist;
 	}
 	
-	@Override
-	public AbstractElevator CallUp(int fromFloor) {
+	private AbstractElevator getNearestElev(int fromFloor,Dir d){
 		AbstractElevator e=null;
 		int min=2*numFloors;
 		for (int i=0;i<numElevators;i++){
 			Elevator tmp=elevators[i];
-			int j=calculateDistance(fromFloor,tmp.getCurrFloor(),Dir.UP,tmp.getDir());
+			int j=calculateDistance(fromFloor,d,tmp);
 			if (j==0){ //special case, the elevator is already here
 				e=tmp;
 				min=j;
@@ -85,6 +88,24 @@ public class Building extends AbstractBuilding {
 				min=j;
 			}
 		}
+		return e;
+	}
+	
+	
+	@Override
+	public AbstractElevator CallUp(int fromFloor) {
+		AbstractElevator e=getNearestElev(fromFloor,Dir.UP);
+		while (e==null){ //could not find any empty elevators
+			synchronized(this){
+				try {
+					this.wait(100);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				e=getNearestElev(fromFloor,Dir.UP);
+			}
+		}
 
 		System.out.println(fromFloor+"called up elev:"+e.toString());
 //		e.RequestFloor(fromFloor); //TODO: PROBLEM CONTEXT SWITCH AFTER THIS, LIVELOCK
@@ -92,7 +113,7 @@ public class Building extends AbstractBuilding {
 		
 //TODO: PROBLEMATIC
 //		wakeUp();
-		eDoor.arrive();
+		eDoor.arrive(Dir.UP);
 		//
 		
 		return e;
@@ -100,21 +121,22 @@ public class Building extends AbstractBuilding {
 
 	@Override
 	public AbstractElevator CallDown(int fromFloor) {
-		AbstractElevator e=null;
-		int min=2*numFloors;
-		for (int i=0;i<numElevators;i++){
-			Elevator tmp=elevators[i];
-			int j=calculateDistance(fromFloor,tmp.getCurrFloor(),Dir.DOWN,tmp.getDir());
-			if (j<min){
-				e=tmp;
-				min=j;
+		AbstractElevator e=getNearestElev(fromFloor,Dir.DOWN);
+		while (e==null){  //could not find any empty elevators
+			synchronized(this){
+				try {
+					this.wait(100);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				e=getNearestElev(fromFloor,Dir.DOWN);
 			}
 		}
-		System.out.println("#B:"+fromFloor+" called down:"+e.toString()+","+min);
-//		e.RequestFloor(fromFloor); //TODO: PROBLEMATIC
+		System.out.println("#B:"+fromFloor+" called down:"+e.toString());
 		DoorEventBarrier eDoor=getDoor(e,fromFloor,true);
 		
-		eDoor.arrive();
+		eDoor.arrive(Dir.DOWN);
 
 		return e;
 	}

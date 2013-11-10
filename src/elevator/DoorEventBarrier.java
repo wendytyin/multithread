@@ -38,18 +38,37 @@ public class DoorEventBarrier extends AbstractEventBarrier{
 			}
 		}
 	}
+	public synchronized void arrive(Dir d){
+		riders++;
+		System.out.println("#D: arrivedD");
+		synchronized(myElevator){
+			myElevator.RequestFloor(myFloor,d);
+			myElevator.notifyAll(); //wake up idle elevator, if necessary
+		}
+		while(!doorOpen){
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	/**
 	 * Called by idle elevators
 	 */
 	public void arriveElev(){
 		synchronized(myElevator){
+			while (myElevator.hasFloors()){
+				System.out.println("#D: elev wait");
 			try {
 				myElevator.wait();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
 		}
 	}
 	
@@ -61,7 +80,7 @@ public class DoorEventBarrier extends AbstractEventBarrier{
 //		System.out.println("R#"+riders);
 		while (riders>0){
 			try {
-				this.wait();
+				this.wait(); 
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
