@@ -19,7 +19,7 @@ public class Main {
 		Rider r2=new Rider(2, 3, 2, bldg);
 		Thread rr2=new Thread(r2);
 		rr1.start();
-//		rr2.start();
+		rr2.start();
 	}
 	
 }

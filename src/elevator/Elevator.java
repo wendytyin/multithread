@@ -15,7 +15,7 @@ import java.util.TreeSet;
 public class Elevator extends AbstractElevator implements Runnable{
 
 	private final String elevatorStr;
-	private int currFloor; //MODIFIED
+	private int currFloor; 
 	private int riders; //total number of riders in elevator
 	private Dir dir;
 	protected TreeSet<Integer> reqFloors; 
@@ -32,7 +32,6 @@ public class Elevator extends AbstractElevator implements Runnable{
 		dir=Dir.X;
 		reqFloors=new TreeSet<Integer>();
 		elevatorStr="E"+elevatorId;
-		System.out.println("#E: done loading");
 	}
 
 
@@ -71,23 +70,23 @@ public class Elevator extends AbstractElevator implements Runnable{
 		if (reqFloors.isEmpty()){
 			return -1;
 		}
-		int i=-1;
-		System.out.println("#E: currfloor:"+currFloor);
+		Integer i=-1;
+//		System.out.println("#E: currfloor:"+currFloor);
 		if((dir==Dir.UP) || (dir==Dir.X)){
-			System.out.println("#E: currfloor:"+currFloor+reqFloors.size());
+//			System.out.println("#E: currfloor:"+currFloor+reqFloors.size());
 			i=reqFloors.ceiling(currFloor);
 			dir=Dir.UP;
-			if (i==0){
+			if (i==null){
 				dir=Dir.DOWN;
 				return getNextFloor();
 			}
 		} 
 		else {
-			System.out.println("#E: "+reqFloors.first());
-			System.out.println("#E: size:"+reqFloors.size());
+//			System.out.println("#E: "+reqFloors.first());
+//			System.out.println("#E: size:"+reqFloors.size());
 			i=reqFloors.floor(currFloor);
-			if (i==0){
-				System.out.println("#E: switch dir");
+			if (i==null){
+//				System.out.println("#E: switch dir");
 				dir=Dir.UP;
 				return getNextFloor();
 			}
@@ -143,7 +142,7 @@ public class Elevator extends AbstractElevator implements Runnable{
 	public synchronized void RequestFloor(int floor) {
 		assert(floor>0 && floor<=numFloors);
 		reqFloors.add(floor);
-		System.out.println("#E: floors visit: "+reqFloors.first());
+//		System.out.println("#E: floors visit: "+reqFloors.first());
 	}
 
 	/**
@@ -169,7 +168,7 @@ public class Elevator extends AbstractElevator implements Runnable{
 	@Override
 	public void run() {
 		while (true){
-			System.out.println("#E: start");
+//			System.out.println("#E: start");
 			while (getNextFloor()==-1){
 				doorIn=myBuilding.getDoor(this, currFloor, true);
 //				DoorEventBarrier d=myBuilding.getDoor(this, currFloor, true);

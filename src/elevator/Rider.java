@@ -58,7 +58,7 @@ public class Rider implements Runnable{
 	protected boolean enterElevator(){
 		boolean attemptSuc=false;
 		Dir d=myElevator.getDir();
-		System.out.println("#R: updir"+d);
+		System.out.println("#R: dir"+d);
 		if (d==Dir.X){
 			attemptSuc=myElevator.Enter();
 		}
