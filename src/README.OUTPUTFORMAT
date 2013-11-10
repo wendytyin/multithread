@@ -77,8 +77,8 @@ Input file:
 7 1 3
 3 4 2
 
-The first line indicates four floors, three elevators, up to nine total riders,
-three rider threads, maximum of four riders per elevator. This is followed by
+The first line indicates four floors, three elevators, up to nine total riders, maximum of four riders per elevator. 
+This is followed by
 two requests; rider seven wants to go from the first floor to the third floor,
 and rider three wants to go from the fourth floor to the second floor. One
 possible output log for the above input:

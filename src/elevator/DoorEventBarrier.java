@@ -7,24 +7,45 @@ import eventbarrier.AbstractEventBarrier;
 public class DoorEventBarrier extends AbstractEventBarrier{
 	private int riders;
 	protected boolean doorOpen;
-	protected boolean upDir;
+	protected Dir dir;
 	
+//	protected final Object myElevator;
+	protected final Elevator myElevator;
+	protected final int myFloor;
 	
-	public DoorEventBarrier(){
+	public DoorEventBarrier(Elevator e, int floor){
 		riders=0;
-		upDir=true;
+		dir=Dir.X;
 		doorOpen=false;
+		myElevator=e;
+		myFloor=floor;
 	}
 	
-	/**
-	 * Please do not directly call this, use the method with arguments
-	 */
 	@Override
 	public synchronized void arrive() {
 		riders++;
+		System.out.println("#D: arrived");
+		synchronized(myElevator){
+			myElevator.RequestFloor(myFloor);
+			myElevator.notifyAll(); //wake up idle elevator, if necessary
+		}
 		while(!doorOpen){
 			try {
-				wait();
+				this.wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**
+	 * Called by idle elevators
+	 */
+	public void arriveElev(){
+		synchronized(myElevator){
+			try {
+				myElevator.wait();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -36,41 +57,41 @@ public class DoorEventBarrier extends AbstractEventBarrier{
 	public synchronized void raise() {
 		assert(doorOpen==false);
 		doorOpen=true;
-		notifyAll();
+		this.notifyAll();
+//		System.out.println("R#"+riders);
 		while (riders>0){
 			try {
-				wait();
+				this.wait();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+//		System.out.println("return raise inner");
 		doorOpen=false;
 	}
 
 	@Override
 	public synchronized void complete() {
 		riders--;
-		if (riders==0){
-			notifyAll();
+		if (riders==0){ //all riders have attempted to enter/exit elevator, regardless of success
+			this.notifyAll();
 		}
-		else {
+		while(riders!=0){
 			try {
-				wait();
+				this.wait();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
-	public void setDir(boolean up){
-		upDir=up;
+	public void setDir(Dir dir){
+		this.dir=dir;
 	}
-	/**
-	 * @return true for up, false for down
-	 */
-	public boolean getDir(){
-		return upDir;
+	
+	public Dir getDir(){
+		return dir;
 	}
 	
 	@Override

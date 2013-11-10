@@ -26,7 +26,12 @@
  *************************/
 
 ----ELEVATOR RULES----
--No active rider thread is allowed a riderID of -1 or 0. -1 indicates end of input file, 0 is a blank thread that has never been assigned a rider.
+-Details in README.OUTPUTFORMAT have been implemented. 
+
+-No active rider thread is allowed a riderID == 0. 0 is a blank thread that has never been assigned a rider.
+-The range of valid riderIDs is otherwise bounded only by the limits of int, 
+but there will be a maximum of [number of riders] active at any single point.
+ 
 -Each riderID is unique. No single riderID can be in two places at once, though it may be handled by any free rider thread.
 
 -No negative floor numbers. The floor numbers span [1 - number of floors].

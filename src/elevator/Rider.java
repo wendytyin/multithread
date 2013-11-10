@@ -9,7 +9,7 @@ public class Rider implements Runnable{
 	protected int riderId;
 	
 	protected Building myBuilding;
-	protected AbstractElevator myElevator;
+	protected Elevator myElevator;
 	protected DoorEventBarrier elevDoor;
 	
 	
@@ -40,45 +40,55 @@ public class Rider implements Runnable{
 	}
 	
 	protected void getElevator(){
-		String tmp="";
-		if (wantedFloor>currFloor){
-			myElevator=myBuilding.CallUp(currFloor);
-			tmp="U";
-		}
-		else {
-			myElevator=myBuilding.CallDown(currFloor);
-			tmp="D";
-		}
-		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
+		String tmp=(wantedFloor>currFloor)?"U":"D";
 		tmp=String.format("pushes %s%d\n",tmp,currFloor);
 		printEvent(tmp);
+		if (wantedFloor>currFloor){
+			myElevator=(Elevator) myBuilding.CallUp(currFloor);
+//			tmp="U";
+		}
+		else {
+			myElevator=(Elevator) myBuilding.CallDown(currFloor);
+//			tmp="D";
+		}
+//		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
+//		elevDoor.arrive();
 	}
 	
 	protected boolean enterElevator(){
-		elevDoor.arrive();
 		boolean attemptSuc=false;
-		if (elevDoor.getDir()==(wantedFloor>currFloor)){
+		Dir d=myElevator.getDir();
+		System.out.println("#R: updir"+d);
+		if (d==Dir.X){
 			attemptSuc=myElevator.Enter();
 		}
-		elevDoor.complete();
+		else if ((d==Dir.UP)&&(wantedFloor>currFloor)){
+			attemptSuc=myElevator.Enter();
+		}
+		else if ((d==Dir.DOWN)&&(wantedFloor<currFloor)){
+			attemptSuc=myElevator.Enter();
+		}
 		if (attemptSuc){
 			String tmp=String.format("enters %s on F%d\n",myElevator.toString(),currFloor);
 			printEvent(tmp);
 		}
+		elevDoor=myBuilding.getDoor(myElevator, currFloor, true);
+		elevDoor.complete();
 		return attemptSuc;
 	}
 	protected void rideElevator(){
-		myElevator.RequestFloor(wantedFloor);
-		elevDoor=myBuilding.getDoor(myElevator, wantedFloor, false);
 		String tmp=String.format("pushes %sB%d\n",myElevator.toString(),wantedFloor);
 		printEvent(tmp);
+		elevDoor=myBuilding.getDoor(myElevator, wantedFloor, false);
+		elevDoor.arrive();
 	}
 	
 	protected void exitElevator(){
-		elevDoor.arrive();
+		currFloor=myElevator.getCurrFloor();
 		myElevator.Exit();
 		String tmp=String.format("exits %s on F%d\n",myElevator.toString(),myElevator.getCurrFloor());
-		printEvent(tmp);
+		printEvent(tmp); //TODO: THIS NEEDS TO BE ENSURED BEFORE E CLOSES DOORS
+		elevDoor.complete();
 	}
 
 	//don't know if this will be useful
@@ -98,13 +108,17 @@ public class Rider implements Runnable{
 			while (currFloor!=wantedFloor){
 				getElevator();
 				boolean suc=enterElevator();
+				System.out.println("#R: suc"+suc);
+				
 				while (!suc){
 					getElevator();
 					enterElevator();
+					System.out.println("#R: suc"+suc);
 				}
 				rideElevator();
 				exitElevator();
 			}
+			riderId=-1; //TODO: FOR TESTING REMOVE
 		}
 	}
 	

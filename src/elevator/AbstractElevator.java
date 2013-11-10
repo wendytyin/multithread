@@ -2,8 +2,7 @@ package elevator;
 
 public abstract class AbstractElevator {
 
-	protected int currFloor; //MODIFIED
-	protected int numFloors; 
+	protected final int numFloors; 
 	protected final int elevatorId; //MODIFIED - should never change for thread lifetime
 	protected final int maxOccupancyThreshold;
 
@@ -46,18 +45,10 @@ public abstract class AbstractElevator {
 	public abstract void Exit();
 
 	/* Request a destination floor once you enter */
-	/* Does not wait - is called by building too */
- 	public abstract void RequestFloor(int floor);	
+ 	public abstract void RequestFloor(int floor);
 	
 	/* Other methods as needed goes here */
  	
-
-	/*
-	 * May be useful in building nearest elevator algorithm?
-	 */
-	public int getCurrFloor(){
-		return currFloor;
-	}
 	//is this necessary?
 	public int getID(){
 		return elevatorId;
