@@ -33,7 +33,7 @@ The program also does not stop running by itself. I have the beginnings of an im
 There is also the option to print most of the comments I used to help debug, which can be turned on by 
 setting DEBUG to true in Building, Elevator, Rider, and DoorEventBarrier.
 
-There are hard-coded test cases available through command line:
+There are hard-coded test cases available through command line (one argument taken):
 
 p1 = eventbarrier. See details below.
 p2part1 = first part elevator (1 elevator, unlimited space)
@@ -86,7 +86,7 @@ Elevator myElevator;
 myDoor.arriveElev(){
 	synchronized (myElevator){
 		while (no floors to visit)
-		wait()
+		myElevator.wait()
 	}
 }
 This works because all Doors corresponding with a specific Elevator hold a reference to that single Elevator object. 
@@ -98,7 +98,7 @@ To wake up an idle Elevator, when the Rider thread .arrive(s) at the Door, it no
 It is a nested lock, and it makes the code hard to follow, but I figure the chances of problems from this are low as long as myElevator never calls anything it could block/deadlock on within the arriveElev method.
 synchronized void arrive(){ //for Rider threads
 	riders++;
-	synchronized(myElevator){ myElevator.requestFloor(this.floor); notifyAll(); //wake up idle elevator }
+	synchronized(myElevator){ myElevator.requestFloor(this.floor); myElevator.notifyAll(); //wake up idle elevator }
 	while (door closed)
 		wait
 	}
@@ -148,8 +148,8 @@ Lastly, the building is not the smartest (but it is fairly reasonable and plausi
 1. The elevator attempts to minimize the direction changes it makes
 2. The building, when selecting the nearest elevator, assumes:
 	a. the elevator will spend the same amount of time on each floor it visits,
-	b. the elevator will travel the full set of floors (1-numFloors)
-	c. an elevator that is currently full will still be full when it reaches the rider's Floor (floor and desired direction).
+	b. the elevator will travel the full set of floors (1-numFloors) to switch directions.
+	c. an elevator that is currently full will traverse the entire building twice before it reaches the rider's Floor (floor and desired direction).
 Building.calculateDistance() and Building.getNearestElevator() hold the majority of the elevator selecting algorithm.
 
 The current elevator selector is kind of stupid and does not take into account the number of people on each floor versus the remaining capacity of each elevator. The Rider must first observe that the Elevator is full (by getting a false returned from Enter) and then requesting another Elevator. 
@@ -187,3 +187,7 @@ UTA hours
 
 I had a problem with nullpointerexception and my treeset, turns out I just didn't understand what null was in Java.
 http://stackoverflow.com/questions/6588856/conversion-from-null-to-int-possible
+
+Course readings on website
+
+I did not collaborate with any fellow classmates at all.
